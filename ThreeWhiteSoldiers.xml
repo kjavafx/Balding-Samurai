@@ -1,0 +1,108 @@
+<?xml version="1.0"?>
+<account version="1.45" name="ThreeWhiteSoldiers" startingcash="300000" ACB="10000" MV="0" equityvalue="11710" barsback="45" lastdate="200406060000000" fromdate="201401011143120" todate="201405311143120" buyfixedcost="0" sellfixedcost="0" buypercost="0" sellpercost="0" buyslip="0" sellslip="0" slippagemodel="0" slippagesymbol="0" uniquenum="1" pyramiding="0" shortsell="1" negitivebalance="0" basecurrency="USD" deployobjectid="" deployignoredataerror="0"><note>Using a Japanese Candlestick
+
+This example show how to use Japanese candlesticks in a system. This system also includes a portfolio of 10 symbols.
+
+Rules:
+
+Buy when we have ThreeWhiteSoldiers candlestick formation
+Sell after 10 bars
+</note><variables/>
+<events><event name="Begin"></event><event name="End"></event></events><orders/>
+<systems><system name="ThreeWhiteSoldiers" heartbeat="FifteenMinutes" usetimeperiods="" usesymbols="" multipleorders="0" implicittif="0" implicitoca="0" deployobjectid="">
+<note></note><variables><variable name="exitBar" default="40" scope="1" value="" optimise="1" optistart="3" optifinish="45" optistep="5"/>
+<variable name="short_ema" default="110" scope="1" optimise="1" optistart="70" optifinish="110" optistep="10"/>
+<variable name="long_ema" default="800" scope="1" optimise="1" optistart="500" optifinish="1500" optistep="100"/>
+</variables><events><event name="Begin"></event><event name="Bar">#buy when we have ThreeWhiteSoldiers candlestick formation
+
+if (not Position) {
+  if (Today(EMA(Close, $long_ema)) &lt; Today(EMA(Close, $short_ema))) {
+	if (Today(ThreeWhiteSoldiers)) {
+		BuyOpen;
+	}
+  }
+}
+if (not Position) {
+  if (Today(EMA(Close, $long_ema)) &gt; Today(EMA(Close, $short_ema))) {
+	if (Today(ThreeWhiteSoldiers)) {
+		SellOpen;
+	}
+}
+}
+if (LongPosition )
+  {
+   if(BarsSinceEntry&gt;$exitBar) {
+		SellOpen;
+	}
+  }
+
+if (not LongPosition &amp;&amp; Position )
+  {
+    if(BarsSinceEntry&gt;$exitBar)
+	{
+		BuyOpen;
+	}
+  }</event><event name="OrderFill"></event><event name="End"></event></events><moneymanagement name="FixedUnits">
+<note>Description
+
+This money management object will always trade 100000
+
+Orders available:
+
+BuyOpen, BuyStop, SellOpen and SellStop
+
+Misc:
+
+A stop price needs to be passed into the BuyStop and SellStop.
+
+This MM will short and will pyramid if account options set.
+</note><variables/>
+<mmfunction name="positionsize">#How many units to trade?
+
+return 100000;</mmfunction><events>
+<event name="BuyMarket">if (ShortPosition) {
+  #If we have a short position, close it.
+  PlaceBuyOpen('fixedcash');
+}
+else {
+  #we have no position, or we are long.
+  my $num=PositionSize();
+  PlaceBuyOpen('fixedcash',$num) if $num;
+}
+
+</event><event name="SellMarket">if (LongPosition) {
+  #If we have a long position, close it.
+  PlaceSellOpen('fixedcash');
+}
+else {
+  #If we have no position or we are short, place the order
+  my $num=PositionSize();
+  PlaceSellOpen('fixedcash',$num) if $num;
+}
+</event><event name="BuyStop">my $stop=shift;
+#Stop trading if we do not have a stop price
+die 'No stop price for BuyStop' unless $stop;
+
+if (ShortPosition) {
+  #If we have a short position, close it.
+  PlaceBuyStop('fixedcash',0,$stop);
+}
+else {
+  #we have no position, or we are long.
+  my $num=PositionSize();
+  PlaceBuyStop('fixedcash',$num,$stop) if $num;
+}
+</event><event name="SellStop">my $stop=shift;
+#Stop trading if we do not have a stop price
+die 'No stop price for BuyStop' unless $stop;
+
+if (LongPosition) {
+  #If we have a long position, close it.
+  PlaceSellStop('fixedcash',0,$stop);
+}
+else {
+  #If we have no position or we are short, place the order
+  my $num=PositionSize();
+  PlaceSellStop('fixedcash',$num,$stop) if $num;
+}</event><event name="BuyLimit"></event><event name="SellLimit"></event><event name="BuyStopLimit"></event><event name="SellStopLimit"></event><event name="StopLoss">die 'This money managment contains no logic for StopLoss';</event></events></moneymanagement><portfolio name="EURUSD" usedatastoresymbols="">EURUSD</portfolio></system></systems><functions/>
+</account>
