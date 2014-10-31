@@ -1,0 +1,52 @@
+﻿#sum of open and close for past 2 bars
+my $laughing_twins;
+my $twin_setter;
+my $redness;
+my $blenz;
+my $ltrig;
+my $above_twohundred;
+my $above_twenty;
+
+#get color of the bar. green is = 1 and red is = -2.
+#the parameter looks bars Ago(..)
+$redness = colorOfBar(0);
+#first set twin_setter
+$twin_setter = abs(abs(Ago(Close,1) - abs(Ago(Open,1))));
+#Output('This is for twin_setter:  ' + $twin_setter);
+if(Today(EMA(Close,20)) > Today(EMA(Close,200))) {
+	$above_twohundred = 1;
+}
+elsif(Today(EMA(Close,20)) < Today(EMA(Close,200))) {
+	$above_twohundred = -1;
+}
+#set up laughing_twins
+if( $twin_setter >= $laughing_size ) {
+	$laughing_twins = abs( abs(Ago(Close,1) - Ago(Open,1) ) - abs( Ago(Close,2) - Ago(Open,2) ) );
+}
+elsif($twin_setter < $laughing_size ) {
+	$laughing_twins = 0;
+}
+#short entry rules
+if(not Position) {
+	if($laughing_twins < $threshold && $laughing_twins > 0  && $above_twohundred < 0 ) {
+		SellOpen;
+	}
+}
+#short exit rules
+if(Position) {
+	if($laughing_twins < $threshold && $laughing_twins > 0  && $above_twohundred > 0 ) {
+		BuyOpen;
+	}
+}
+#long entry rules
+if(not Position) {
+	if($laughing_twins < $threshold && $laughing_twins > 0  && $above_twohundred > 0 ) {
+		BuyOpen;
+	}
+}
+#long exit rule
+if(Position) {
+	if($laughing_twins < $threshold && $laughing_twins > 0  && $above_twohundred < 0 ) {
+		SellOpen;
+	}
+}

@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<account version="1.45" name="BasicRSI_Optimize" startingcash="150000" ACB="10000" MV="0" equityvalue="0" barsback="45" lastdate="200308011143120" fromdate="201404011143120" todate="201405212359000" buyfixedcost="0" sellfixedcost="0" buypercost="0" sellpercost="0" buyslip="0" sellslip="0" slippagemodel="0" slippagesymbol="0" uniquenum="2" pyramiding="0" shortsell="0" negitivebalance="0" basecurrency="USD" deployobjectid="2" deployignoredataerror="0"><note>A Basic RSI system
+<account version="1.45" name="BasicRSI_Optimize" startingcash="150000" ACB="10000" MV="0" equityvalue="0" barsback="45" lastdate="200308011143120" fromdate="201310011143120" todate="201405222359000" buyfixedcost="0" sellfixedcost="0" buypercost="0" sellpercost="0" buyslip="0" sellslip="0" slippagemodel="0" slippagesymbol="0" uniquenum="2" pyramiding="0" shortsell="1" negitivebalance="0" basecurrency="USD" deployobjectid="2" deployignoredataerror="0"><note>A Basic RSI system
 
 Rules:
 Buy when the RSI moves up through 30
@@ -9,68 +9,64 @@ We have to define two variables to record the fact that the upper and lower
 RSI bands have been breached. Once they have been breached, we enter/exit
 when RSI moves back through the band.</note><variables/>
 <events><event name="Begin"></event><event name="End"></event></events><orders/>
-<systems><system name="BasicRSI" heartbeat="OneMinute" usetimeperiods="FiveMinutes" usesymbols="" multipleorders="1" implicittif="0" implicitoca="0" deployobjectid="2">
-<note></note><variables><variable name="TriggerUpper" default="81" scope="1" value="" optimise="1" optistart="70" optifinish="100" optistep="5"><instance symbol="MSFT" value="0"/>
-</variable><variable name="TriggerLower" default="15" scope="1" value="" optimise="1" optistart="0" optifinish="30" optistep="5"><instance symbol="MSFT" value="0"/>
-</variable><variable name="rsilower" default="14" scope="1" value="" optimise="1" optistart="5" optifinish="20" optistep="4"/>
-<variable name="rsiupper" default="14" scope="1" value="" optimise="1" optistart="5" optifinish="20" optistep="4"/>
-</variables><events><event name="Begin">
-R '
-	library(ggplot2);
-	library(data.table);
-	library(LoopAnalyst);
-';</event><event name="Bar">#Basic RSI system
+<systems><system name="BasicRSI" heartbeat="FifteenMinutes" usetimeperiods="" usesymbols="" multipleorders="1" implicittif="0" implicitoca="0" deployobjectid="2">
+<note></note><variables><variable name="long_ema" default="200" scope="1" optimise="1" optistart="20" optifinish="200" optistep="20"/>
+<variable name="short_ema" default="20" scope="1" optimise="1" optistart="6" optifinish="30" optistep="3"/>
+<variable name="threshold" default="3" scope="1" optimise="1" optistart="1" optifinish="8" optistep="1"/>
+<variable name="laughing_size" default="6" scope="1" optimise="0" optistart="1" optifinish="10" optistep="1"/>
+</variables><events><event name="Begin"></event><event name="Bar">#Basic RSI system
 #Buy when the RSI moves up through 30
 #Sell when the RSI moves down through 70
 #We have to define two variables to record the fact that the upper and lower
 #RSI bands have been breached. Once they have been breached, we enter/exit
 #when RSI moves back through the band.
-RVar(Open);
-RVar(Close);
 
-R '
-	diff &lt;- data.table(Close-Open);
-	plot(ggplot(diff, aes(x=V1)) + geom_histogram());
+my $long_safe_zone;
+my $short_safe_zone;
+#long safe zone
+if (Ago(Open,4) &lt; Ago(Close,4) &amp;&amp; Ago(Open,5) &gt; Ago(Close,5) &amp;&amp; ThreeWhiteSoldiers) {
+  $long_safe_zone = 1;
+  $short_safe_zone = 0;  
+  Output('Red Bar!!!!');
+}
+#short safe zone
+if (Ago(Open,4) &gt; Ago(Close,4) &amp;&amp; Ago(Open,5) &lt; Ago(Close,5) &amp;&amp; ThreeBlackCrows) {
+  $short_safe_zone = 1;
+  $long_safe_zone = 0;  
+  Output($short_safe_zone);
+}
+#define the entry rules
 
-	m &lt;- mean(diff$V1);
-';
-
-my $m = RVar('m');
-Output('$m');
-
-#Define the RSI bands - narrowing the bands will increase trades
-my $upper=70;
-my $lower=30;
-
-#Set the triggers for the bands.
-$TriggerLower=1 if Today(RSI($rsilower))&lt;$lower;
-$TriggerUpper=1 if Today(RSI($rsiupper))&gt;$upper;
-
+#long entry rules
 if (not Position) {
-  #We do not have a position - has the trigger fired?
-  if ($TriggerLower) {
-    if (Today(RSI($rsilower))&gt;$lower) {
-      #The RSI has passed up through the lower band, go long.
-      BuyOpen;
-      #reset the triggers
-      $TriggerLower=0;
-      $TriggerUpper=0;
-    } 
+  if (Today(Close) &gt; 0 &amp;&amp; $long_safe_zone &gt; 0 ) {	
+		BuyOpen;	
   }
 }
-else {
-  #We have a position - has the trigger fired?
-  if ($TriggerUpper) {
-    if (Today(RSI($rsiupper))&lt;$upper) {
-      #The RSI has passed down through the upper band, close the long.
-      SellOpen;
-      #reset the triggers
-      $TriggerLower=0;
-      $TriggerUpper=0;
-    } 
+#short entry rules
+if (not Position) {
+  if (Today(Close) &gt; 0 &amp;&amp; $short_safe_zone &gt; 0) {	
+		SellOpen;	
   }
 }
-</event><event name="OrderFill"></event><event name="End"></event></events><moneymanagement name="FixedUnits">
+
+#end entry rules
+
+#define exit rules
+if (LongPosition )
+  {
+   if(BarsSinceEntry &gt; 1 &amp;&amp; Ago(Open,1) &gt; Ago(Close,2)) {
+		SellOpen;
+	}
+  }
+
+if (not LongPosition &amp;&amp; Position )
+  {
+    if(BarsSinceEntry &gt; 1 &amp;&amp; (Ago(Close, 4) &gt; Ago(Open, 3) &amp;&amp; Ago(Open, 4) &lt; Ago(Close,3)))
+	{
+		BuyOpen;
+	}
+  }</event><event name="OrderFill"></event><event name="End"></event></events><moneymanagement name="FixedUnits">
 <note>Description
 
 This money management object will always trade 100000
